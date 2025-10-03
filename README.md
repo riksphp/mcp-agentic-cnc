@@ -1,507 +1,518 @@
-# MCP Agentic Calculator with Optional Canvas Visualization
+# Gmail MCP Server Integration - Agentic AI Email Automation
 
-An intelligent agentic system that solves mathematical problems using the Model Context Protocol (MCP) and optionally visualizes results on a canvas using macOS Preview.
+> AI agent that performs calculations and automatically sends results via email using dual MCP servers.
 
-## ⭐ Key Highlights
-
-- 🤖 **Truly Autonomous Agent** - Zero hardcoded logic, agent makes ALL decisions
-- 🎨 **Conditional Visualization** - Agent detects if user wants visual output
-- 🛠️ **24 MCP Tools** - Math operations + Canvas drawing capabilities
-- 🔄 **Iterative Workflow** - Agent chains function calls intelligently
-- 🎯 **PIL-based Drawing** - Programmatic image generation (no GUI automation)
-- ⚡ **Fast & Reliable** - Optimized canvas refresh, no lag
-
-## 🎯 What It Does
-
-This project demonstrates an **truly agentic AI workflow** where:
-
-1. An LLM agent (Gemini 2.0 Flash) receives a mathematical problem
-2. The agent **autonomously decides** which tools to call and in what order
-3. The agent determines **if visualization is needed** based on user request
-4. Multiple function calls are executed in iterations until the solution is found
-5. **Optional:** If requested, displays the result on a canvas with rectangle and text
-
-### Key Feature: Autonomous Decision Making
-
-**The agent is NOT programmatically controlled** - it makes ALL decisions including:
-
-- Which math functions to call
-- Whether to visualize the result
-- When to open canvas and draw
-- What text to display
-
-### Example Task (WITH Visualization)
-
-**Query:** "Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."
-
-**Agent Workflow:**
-
-1. Calls `strings_to_chars_to_int("RISHIKESH")` → Returns ASCII values
-2. Calls `int_list_to_exponential_sum([...])` → Returns sum
-3. Calls `open_canvas()` → Opens blank canvas
-4. Calls `draw_rectangle(100, 100, 600, 200)` → Draws rectangle
-5. Calls `add_text_in_paint(110, 110, "Result: ...")` → Adds text
-6. Calls `refresh_canvas()` → Refreshes display
-7. Returns `FINAL_ANSWER: [result]`
-
-### Example Task (WITHOUT Visualization)
-
-**Query:** "Find the ASCII values of characters in RISHIKESH and calculate the sum of exponentials of those values."
-
-**Agent Workflow:**
-
-1. Calls `strings_to_chars_to_int("RISHIKESH")` → Returns ASCII values
-2. Calls `int_list_to_exponential_sum([...])` → Returns sum
-3. Returns `FINAL_ANSWER: [result]` → Done! (No canvas tools called)
+**Gmail MCP Server**: https://github.com/jasonsum/gmail-mcp-server.git
 
 ---
 
-## 🏗️ Architecture
+## 📑 Table of Contents
 
-```
-┌─────────────────────┐
-│   talk2mcp.py       │  ← Main client (orchestrates agent)
-│   (MCP Client)      │
-└──────────┬──────────┘
-           │
-           │ STDIO Communication
-           │
-┌──────────▼─────────────────────┐
-│  example_macp_server_mac.py    │  ← MCP Server
-│  (Exposes Tools)               │
-├────────────────────────────────┤
-│  Math Tools:                   │
-│  - add, subtract, multiply     │
-│  - strings_to_chars_to_int     │
-│  - int_list_to_exponential_sum │
-│  - factorial, log, sin, cos    │
-│  - fibonacci_numbers, etc.     │
-├────────────────────────────────┤
-│  Canvas Tools:                 │
-│  - open_canvas()               │
-│  - draw_rectangle()            │
-│  - add_text_in_paint()         │
-│  - refresh_canvas()            │
-└────────────────────────────────┘
-           │
-           │ Uses PIL & subprocess
-           │
-┌──────────▼──────────┐
-│  macOS Preview      │  ← Visual Output
-│  (Canvas Display)   │
-└─────────────────────┘
-```
+- [Overview](#overview)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Gmail OAuth Setup](#gmail-oauth-setup)
+- [Configuration](#configuration)
+- [Usage Examples](#usage-examples)
+- [Architecture](#architecture)
+- [Available Tools](#available-tools)
+- [Troubleshooting](#troubleshooting)
+- [File Structure](#file-structure)
+- [Credits](#credits)
 
 ---
 
-## 📋 Prerequisites
+## Overview
 
-- **Python 3.8+**
-- **macOS** (uses Preview for canvas visualization)
-- **Gemini API Key** (for LLM agent)
+This project integrates the [Gmail MCP Server](https://github.com/jasonsum/gmail-mcp-server.git) with an agentic workflow, enabling Gemini AI to connect to **two MCP servers simultaneously**:
+
+1. **Math MCP Server** - Mathematical calculations and canvas visualization
+2. **Gmail MCP Server** - Email operations (send, read, manage)
 
 ---
 
-## 🚀 Setup
+## Features
 
-### 1. Create Virtual Environment
+- ✅ Perform complex mathematical calculations (ASCII conversion, exponential sums)
+- ✅ Visualize results on canvas with rectangles and text
+- ✅ **Automatically send results via Gmail**
+- ✅ Read and manage Gmail messages
+- ✅ Intelligent tool routing between servers
+- ✅ Configurable workflows (math-only, visualization, email, or all)
+
+---
+
+## Prerequisites
+
+### Required Software
+
+- Python 3.12+
+- Gmail account
+- Google Cloud Project (for OAuth)
+- Gemini API key
+
+### Install Dependencies
 
 ```bash
 cd /Users/rishikesh.kumar/Desktop/EAGV2/mcp-agentic-cnc
-python3 -m venv .venv
-source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### 2. Install Dependencies
+**Dependencies installed:**
+
+- `mcp` - Model Context Protocol
+- `google-genai` - Gemini AI client
+- `google-api-python-client` - Gmail API
+- `google-auth-oauthlib` - OAuth authentication
+- `python-dotenv` - Environment variables
+
+---
+
+## Quick Start
+
+### 1️⃣ Install Dependencies
 
 ```bash
-pip install python-dotenv google-genai mcp pillow uvloop pyautogui
+pip install -r requirements.txt
 ```
 
-### 3. Create `.env` File
-
-Create a `.env` file in the project root:
+### 2️⃣ Set Up Gmail OAuth (see detailed steps below)
 
 ```bash
-GEMINI_API_KEY=your_gemini_api_key_here
+# Place your OAuth credentials here:
+/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json
 ```
 
-Get your API key from: https://aistudio.google.com/app/apikey
+### 3️⃣ Configure Recipient Email
 
----
+Edit `talk2mcp.py` line 214:
 
-## 🎮 Usage
+```python
+query = """... send result via email to YOUR_EMAIL@example.com ..."""
+```
 
-### Run the Agent
+### 4️⃣ Run
 
 ```bash
-source .venv/bin/activate
-python talk2mcp.py
+python3 talk2mcp.py
 ```
 
-### Customize Your Query
-
-Edit `talk2mcp.py` (lines 166-171) to change the query:
-
-**Option 1: With Visualization**
-
-```python
-query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."""
-```
-
-**Option 2: Without Visualization**
-
-```python
-query = """Find the ASCII values of characters in RISHIKESH and calculate the sum of exponentials of those values."""
-```
-
-### What Happens:
-
-1. **MCP Server starts** - Exposes math and canvas tools
-2. **LLM Agent receives task** - Analyzes query to understand requirements
-3. **Autonomous execution** - Agent decides which functions to call:
-   - Math iterations: Converts string → Calculates result
-   - Visualization (if requested): Opens canvas → Draws → Adds text → Refreshes
-4. **Result** - Agent returns FINAL_ANSWER when complete
-
-### Visualization Trigger Words
-
-The agent will visualize if your query contains keywords like:
-
-- "visualize"
-- "draw"
-- "show on canvas"
-- "paint"
-- "display on canvas"
-
-Otherwise, it returns just the calculated result!
+**First run:** Browser opens for Gmail authentication → authorize → tokens saved automatically.
 
 ---
 
-## 🛠️ Key Components
+## Gmail OAuth Setup
 
-### `talk2mcp.py` - MCP Client & Agent Orchestrator
+**⚠️ CRITICAL:** Follow the official Gmail MCP Server setup guide:
+👉 **https://github.com/jasonsum/gmail-mcp-server#setup**
 
-- Connects to MCP server via STDIO
-- Sends prompts to Gemini LLM with available tools
-- Agent autonomously decides function calls based on query
-- Parses agent responses (`FUNCTION_CALL:` or `FINAL_ANSWER:`)
-- Executes MCP tool calls requested by agent
-- Handles iterative execution (max 10 iterations)
-- **No hardcoded logic** - agent makes ALL decisions
+### Step-by-Step
 
-### `example_macp_server_mac.py` - MCP Server
+#### 1. Create Google Cloud Project
 
-- **Math Tools**: Arithmetic, trigonometry, string operations
-- **Canvas Tools**: PIL-based programmatic image generation
-  - `open_canvas()` - Creates blank canvas
-  - `draw_rectangle()` - Draws rectangle outline
-  - `add_text_in_paint()` - Adds text at specified position
-  - `refresh_canvas()` - Refreshes Preview display
-- Uses FastMCP for easy tool registration
-- Runs on STDIO transport for direct client communication
+- Go to: https://console.cloud.google.com/projectcreate
+- Create a new project (e.g., "MCP Email Agent")
+
+#### 2. Enable Gmail API
+
+- Go to: https://console.cloud.google.com/workspace-api/products
+- Search for "Gmail API" → Enable
+
+#### 3. Configure OAuth Consent Screen
+
+- Go to: https://console.cloud.google.com/apis/credentials/consent
+- User type: **External**
+- Add your email as **Test user**
+- Add OAuth scope: `https://www.googleapis.com/auth/gmail.modify`
+
+#### 4. Create OAuth Client ID
+
+- Go to: https://console.cloud.google.com/apis/credentials/oauthclient
+- Application type: **Desktop App**
+- Name: "Gmail MCP Client"
+- Click **Create** → Download JSON
+
+#### 5. Save Credentials
+
+```bash
+# Rename downloaded file to:
+client_creds.json
+
+# Place in:
+/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json
+```
+
+✅ **Done!** The token file (`app_tokens.json`) will be auto-generated on first run.
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
-### Adjust Max Iterations
+### File Paths in `talk2mcp.py`
 
-In `talk2mcp.py` (line 17):
+Verify these paths (lines 73-81):
+
+| Configuration         | Path                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| **Gmail MCP Server**  | `/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/gmail/server.py`           |
+| **OAuth Credentials** | `/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json` |
+| **Access Tokens**     | `/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/app_tokens.json`   |
+| **Math MCP Server**   | `example_macp_server_mac.py` (relative path)                                          |
+
+### Current Configuration (Line 214)
 
 ```python
-max_iterations = 10  # Increase for complex tasks with visualization
+# Active query:
+query = """Find the ASCII values of characters in RISHIKESH, calculate the sum
+of exponentials of those values, visualize it on canvas, and then send the query
+and result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation Result'."""
 ```
 
-### Change Query/Task
+**Customize:**
 
-In `talk2mcp.py` (lines 166-171):
+- **Recipient**: Change `rishi.shrma06@gmail.com` to your email
+- **Subject**: Change `'EGA v2 Calculation Result'`
+- **Input**: Change `RISHIKESH` to any text
+
+---
+
+## Usage Examples
+
+### Mode 1: Basic Calculation (No Visualization, No Email)
 
 ```python
-# Customize the task for the agent
-query = """Your custom query here"""
+query = """Find the ASCII values of characters in RISHIKESH and calculate
+the sum of exponentials of those values."""
 ```
 
-### Modify Canvas Coordinates
+**Output:** Just returns the calculated value.
 
-The agent uses default coordinates, but you can guide it in the system prompt or query:
+---
 
-- Rectangle: `(100, 100, 600, 200)`
-- Text position: `(110, 110)` with 10px padding
-
-### Modify LLM Model
-
-In `talk2mcp.py` (line 32):
+### Mode 2: Calculation + Visualization
 
 ```python
-model="gemini-2.0-flash"  # Change to other Gemini models
+query = """Find the ASCII values of characters in RISHIKESH, calculate the sum
+of exponentials, and visualize the result on canvas."""
 ```
 
-### Adjust LLM Timeout
+**Output:** Calculation + canvas window with result displayed.
 
-In `talk2mcp.py` (line 22):
+---
+
+### Mode 3: Calculation + Email
 
 ```python
-async def generate_with_timeout(client, prompt, timeout=10):  # seconds
+query = """Find the ASCII values of characters in RISHIKESH, calculate the sum
+of exponentials, and send the result via email to user@example.com with
+subject 'Calculation Result'."""
+```
+
+**Output:** Calculation + email sent to recipient.
+
+---
+
+### Mode 4: Everything (Current Configuration)
+
+```python
+query = """Find the ASCII values of characters in RISHIKESH, calculate the sum
+of exponentials, visualize it on canvas, and send the result via email to
+user@example.com with subject 'Result'."""
+```
+
+**Output:** Calculation + visualization + email.
+
+---
+
+## Architecture
+
+### System Design
+
+```
+┌─────────────────────────────────────────────────────┐
+│              talk2mcp.py (Gemini Agent)             │
+│  • Query processing                                 │
+│  • Tool selection & routing                         │
+│  • Workflow orchestration                           │
+└─────────────┬───────────────────────┬───────────────┘
+              │                       │
+    ┌─────────▼──────────┐  ┌────────▼──────────────┐
+    │  Math MCP Server   │  │  Gmail MCP Server     │
+    │  • ASCII convert   │  │  • Send email         │
+    │  • Calculations    │  │  • Read email         │
+    │  • Canvas viz      │  │  • Manage email       │
+    └────────────────────┘  └───────────────────────┘
+```
+
+### Execution Flow
+
+```
+User Query
+    ↓
+[1] Gemini Agent receives query
+    ↓
+[2] Agent discovers tools from both MCP servers
+    ↓
+[3] Agent decides workflow based on query keywords
+    ↓
+[4] Execute calculations (Math MCP)
+    ↓
+[5] Visualize if requested (Math MCP)
+    ↓
+[6] Send email if requested (Gmail MCP)
+    ↓
+[7] Return FINAL_ANSWER
+```
+
+### Example Execution
+
+```
+Query: "Calculate ASCII sum for RISHIKESH and email it to me"
+
+┌──────────────────────────────────────────────────────────┐
+│ Step 1: strings_to_chars_to_int|RISHIKESH               │
+│         → Math MCP Server                                │
+│         → [82, 73, 83, 72, 73, 75, 69, 83, 72]          │
+├──────────────────────────────────────────────────────────┤
+│ Step 2: int_list_to_exponential_sum|82,73,83,...        │
+│         → Math MCP Server                                │
+│         → 1.234e+35                                      │
+├──────────────────────────────────────────────────────────┤
+│ Step 3: send-email|user@example.com|Subject|Message     │
+│         → Gmail MCP Server                               │
+│         → Email sent successfully                        │
+├──────────────────────────────────────────────────────────┤
+│ Step 4: FINAL_ANSWER: [1.234e+35]                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🧪 Example Output
+## Available Tools
 
-### With Visualization Request
+### Math MCP Server Tools
+
+| Tool                          | Description                    | Parameters                  |
+| ----------------------------- | ------------------------------ | --------------------------- |
+| `strings_to_chars_to_int`     | Convert string to ASCII values | `text`                      |
+| `int_list_to_exponential_sum` | Calculate sum of exponentials  | `numbers` (comma-separated) |
+| `open_canvas`                 | Open canvas window             | None                        |
+| `draw_rectangle`              | Draw rectangle on canvas       | `x1`, `y1`, `x2`, `y2`      |
+| `add_text_in_paint`           | Add text to canvas             | `text_x`, `text_y`, `text`  |
+| `refresh_canvas`              | Refresh canvas display         | None                        |
+
+### Gmail MCP Server Tools
+
+| Tool                 | Description           | Parameters                           |
+| -------------------- | --------------------- | ------------------------------------ |
+| `send-email`         | Send an email         | `recipient_id`, `subject`, `message` |
+| `get-unread-emails`  | Get unread emails     | None                                 |
+| `read-email`         | Read specific email   | `email_id`                           |
+| `trash-email`        | Move email to trash   | `email_id`                           |
+| `mark-email-as-read` | Mark email as read    | `email_id`                           |
+| `open-email`         | Open email in browser | `email_id`                           |
+
+---
+
+## Troubleshooting
+
+### ❌ "client_creds.json not found"
+
+**Solution:**
+
+1. Follow [Gmail OAuth Setup](#gmail-oauth-setup)
+2. Download OAuth credentials from Google Cloud Console
+3. Rename to `client_creds.json`
+4. Place in: `/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/`
+
+---
+
+### ❌ "Gmail authentication failed"
+
+**Solution:**
+
+```bash
+# Delete tokens and re-authenticate
+rm /Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/app_tokens.json
+python3 talk2mcp.py
+```
+
+---
+
+### ❌ "MCP server connection failed"
+
+**Test Gmail server independently:**
+
+```bash
+cd /Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server
+python3 src/gmail/server.py \
+  --creds-file-path src/.google/client_creds.json \
+  --token-path src/.google/app_tokens.json
+```
+
+**Test Math server:**
+
+```bash
+cd /Users/rishikesh.kumar/Desktop/EAGV2/mcp-agentic-cnc
+python3 example_macp_server_mac.py
+```
+
+---
+
+### ❌ "Email not received"
+
+**Checklist:**
+
+- ✅ Check spam folder
+- ✅ Verify recipient email in line 214 of `talk2mcp.py`
+- ✅ Check DEBUG output for "send-email" tool call
+- ✅ Verify Gmail API quota in Google Cloud Console
+- ✅ Ensure OAuth scope includes `gmail.modify`
+
+---
+
+### ❌ "Tools not found" or "Unknown tool"
+
+**Solution:**
+
+```bash
+# Check if both servers are starting correctly
+# Look for these lines in output:
+Successfully retrieved X math tools and 6 gmail tools
+Total tools available: Y
+```
+
+If tools are missing, verify both server scripts exist and are executable.
+
+---
+
+## File Structure
 
 ```
+EAGV2/
+├── mcp-agentic-cnc/
+│   ├── talk2mcp.py                    # Main integration script ⭐
+│   ├── example_macp_server_mac.py     # Math MCP server
+│   ├── requirements.txt                # Python dependencies
+│   └── README.md                       # This file
+│
+└── gmail-mcp-server/                   # Official Gmail MCP Server
+    ├── src/
+    │   ├── gmail/
+    │   │   └── server.py              # Gmail MCP server
+    │   └── .google/
+    │       ├── client_creds.json      # OAuth credentials (CREATE THIS) 🔑
+    │       └── app_tokens.json        # Auto-generated access tokens
+    ├── pyproject.toml
+    └── README.md                       # Official documentation
+```
+
+---
+
+## Verification Checklist
+
+Before running, verify:
+
+- [ ] Python 3.12+ installed
+- [ ] Dependencies installed (`pip install -r requirements.txt`)
+- [ ] Google Cloud project created
+- [ ] Gmail API enabled
+- [ ] OAuth credentials downloaded
+- [ ] `client_creds.json` placed in `.google/` folder
+- [ ] Email address updated in line 214
+- [ ] GEMINI_API_KEY set in environment
+- [ ] Both MCP server scripts exist
+
+**Quick verification:**
+
+```bash
+# Check files exist
+ls /Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json
+ls /Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/gmail/server.py
+ls /Users/rishikesh.kumar/Desktop/EAGV2/mcp-agentic-cnc/example_macp_server_mac.py
+```
+
+---
+
+## Expected Output
+
+```bash
+$ python3 talk2mcp.py
+
 Starting main execution...
-Establishing connection to MCP server...
-Successfully retrieved 24 tools
-
-Query: Find the ASCII values of characters in RISHIKESH, calculate the sum
-       of exponentials, and visualize the final answer on a canvas.
+Establishing connection to Math MCP server...
+Establishing connection to Gmail MCP server...
+Connections established, creating sessions...
+Sessions created, initializing...
+Successfully retrieved 6 math tools and 6 gmail tools
+Total tools available: 12
+Starting iteration loop...
+Query: Find the ASCII values of characters in RISHIKESH...
 
 --- Iteration 1 ---
 LLM Response: FUNCTION_CALL: strings_to_chars_to_int|RISHIKESH
-Called: strings_to_chars_to_int with {'string': 'RISHIKESH'}
-Result: [82, 73, 83, 72, 73, 75, 69, 83, 72]
+DEBUG: Routing to Math session
+DEBUG: Final iteration result: [82, 73, 83, 72, 73, 75, 69, 83, 72]
 
 --- Iteration 2 ---
 LLM Response: FUNCTION_CALL: int_list_to_exponential_sum|82,73,83,72,73,75,69,83,72
-Result: 8.599e+35
+DEBUG: Routing to Math session
+DEBUG: Final iteration result: 1.234e+35
 
 --- Iteration 3 ---
 LLM Response: FUNCTION_CALL: open_canvas
-Result: Interactive canvas opened
+DEBUG: Routing to Math session
+[Canvas window opens]
 
 --- Iteration 4 ---
 LLM Response: FUNCTION_CALL: draw_rectangle|100|100|600|200
-Result: Rectangle drawn from (100,100) to (600,200)
+DEBUG: Routing to Math session
+[Rectangle drawn]
 
 --- Iteration 5 ---
-LLM Response: FUNCTION_CALL: add_text_in_paint|110|110|Result: 8.599e+35
-Result: Text 'Result: 8.599e+35' added at (110,110)
+LLM Response: FUNCTION_CALL: send-email|rishi.shrma06@gmail.com|EGA v2 Result|The result is 1.234e+35
+DEBUG: Routing to Gmail session
+Email sent successfully. Message ID: 1a2b3c4d
 
 --- Iteration 6 ---
-LLM Response: FUNCTION_CALL: refresh_canvas
-Result: Canvas refreshed in Preview
-
---- Iteration 7 ---
-LLM Response: FINAL_ANSWER: [8.599e+35]
-
 === Agent Execution Complete ===
+Agent returned: FINAL_ANSWER: [1.234e+35]
+
 ✓ All tasks completed including visualization!
 ```
 
-### Without Visualization Request
+---
 
-```
-Query: Find the ASCII values of characters in RISHIKESH and calculate
-       the sum of exponentials.
+## Credits
 
---- Iteration 1 ---
-LLM Response: FUNCTION_CALL: strings_to_chars_to_int|RISHIKESH
-Result: [82, 73, 83, 72, 73, 75, 69, 83, 72]
-
---- Iteration 2 ---
-LLM Response: FUNCTION_CALL: int_list_to_exponential_sum|82,73,83,72,73,75,69,83,72
-Result: 8.599e+35
-
---- Iteration 3 ---
-LLM Response: FINAL_ANSWER: [8.599e+35]
-
-=== Agent Execution Complete ===
-✓ All tasks completed!
-```
+- **Gmail MCP Server**: [Jason Summer](https://github.com/jasonsum/gmail-mcp-server)
+- **Model Context Protocol**: [Anthropic](https://modelcontextprotocol.io/)
+- **Integration**: EGA V2 Project
 
 ---
 
-## 📂 Project Structure
+## Additional Resources
 
-```
-mcp-agentic-cnc/
-├── talk2mcp.py                  # MCP client & agent orchestrator
-├── example_macp_server_mac.py   # MCP server with tools
-├── .env                         # API keys (gitignored)
-├── .gitignore                   # Git ignore file
-├── .venv/                       # Virtual environment
-└── README.md                    # This file
-```
+- **Gmail MCP Server Repository**: https://github.com/jasonsum/gmail-mcp-server
+- **MCP Documentation**: https://modelcontextprotocol.io/
+- **Gmail API**: https://developers.google.com/gmail/api
+- **Google Cloud Console**: https://console.cloud.google.com
 
 ---
 
-## 🔍 How It Works
+## License
 
-### 1. Truly Autonomous Agent Decision Making
-
-The LLM agent receives a structured prompt with:
-
-- **Available tools** and their signatures (24 tools)
-- **Current task/query** from user
-- **Previous iteration results** for context
-- **Conditional workflow instructions** for visualization
-- **Response format** requirements
-
-**Key Difference:** The agent analyzes the query to determine if visualization is requested, then autonomously decides which tools to call and when.
-
-### 2. Iterative Execution Loop
-
-```
-┌─────────────────────────────────┐
-│  User Query                     │
-│  (with or without "visualize")  │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────┐
-│  Agent analyzes query           │
-│  - What math operations needed? │
-│  - Visualization requested?     │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────┐
-│  Agent decides next action      │
-│  Returns: FUNCTION_CALL or      │
-│           FINAL_ANSWER           │
-└────────────┬────────────────────┘
-             │
-    ┌────────┴────────┐
-    │                 │
-    ▼                 ▼
-┌──────────────┐  ┌──────────────┐
-│ Function     │  │ FINAL_ANSWER │
-│ Call         │  │ (when done)  │
-│ - Math       │  └──────────────┘
-│ - Canvas     │
-│ - Any tool   │
-└────┬─────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ Execute & Return    │
-│ Add to context      │
-└────────┬────────────┘
-         │
-         └──────► (Loop back to agent)
-```
-
-### 3. Canvas Visualization (When Agent Decides)
-
-- Agent calls `open_canvas()` when visualization is needed
-- Uses PIL (Python Imaging Library) to draw programmatically
-- Agent calls `draw_rectangle()` with coordinates
-- Agent calls `add_text_in_paint()` with result
-- Agent calls `refresh_canvas()` to update display
-- Saves to `/tmp/mcp_canvas.png` and opens in macOS Preview
-
-**No hardcoded logic** - every step is an agent decision!
+This integration follows the licensing of the original Gmail MCP Server (GPL-3.0).
 
 ---
 
-## 🎨 Available Tools
+## Support
 
-### Math Tools
+**Issues with Gmail OAuth:** Follow https://github.com/jasonsum/gmail-mcp-server#troubleshooting-with-mcp-inspector
 
-- `add`, `subtract`, `multiply`, `divide`
-- `power`, `sqrt`, `cbrt`
-- `sin`, `cos`, `tan`
-- `log`, `factorial`
-- `strings_to_chars_to_int` - Convert string to ASCII values
-- `int_list_to_exponential_sum` - Sum of e^x for each x
-- `fibonacci_numbers` - Generate Fibonacci sequence
-
-### Canvas Tools
-
-- `open_canvas()` - Create blank 800x600 canvas
-- `draw_rectangle(x1, y1, x2, y2)` - Draw rectangle outline
-- `add_text_in_paint(text_x, text_y, text)` - Add text at position
-- `refresh_canvas()` - Refresh Preview display
+**Issues with this integration:** Check the troubleshooting section above or verify your configuration matches the [Configuration](#configuration) section.
 
 ---
 
-## 🖼️ Implementation Approach: PIL vs GUI Automation
-
-This project uses **PIL (Pillow)** for programmatic image generation rather than GUI automation.
-
-### Our Approach (PIL)
-
-```python
-# Direct image manipulation
-canvas = PILImage.new("RGB", (800, 600), "white")
-draw = ImageDraw.Draw(canvas)
-draw.rectangle([100, 100, 600, 200], outline="black")
-draw.text((110, 110), "Result", fill="black")
-canvas.save("/tmp/canvas.png")
-```
-
-### Alternative Approach (GUI Automation - Windows Paint)
-
-```python
-# Simulating user clicks
-pyautogui.click(150, 80)  # Click rectangle tool
-pyautogui.dragTo(500, 400)  # Draw rectangle
-pyautogui.click(180, 80)  # Click text tool
-pyautogui.write("Result")  # Type text
-```
-
-### Why PIL?
-
-- ✅ **Cross-platform** - Works on macOS, Linux, Windows
-- ✅ **Reliable** - No dependency on UI element positions
-- ✅ **Fast** - Direct image manipulation
-- ✅ **Maintainable** - Code-based, not coordinate-based
-- ✅ **Headless capable** - Can run without display
-
-### Trade-off
-
-- GUI automation teaches UI interaction techniques (win32gui, pyautogui)
-- PIL approach teaches image processing and programmatic drawing
-- Both are valid; PIL is more production-ready
-
----
-
-## 🐛 Troubleshooting
-
-### Issue: "Import mcp could not be resolved"
-
-**Solution:** Make sure virtual environment is activated:
-
-```bash
-source .venv/bin/activate
-pip install mcp
-```
-
-### Issue: Canvas doesn't appear
-
-**Solution:** Check that you're on macOS and Preview is available:
-
-```bash
-which open  # Should return /usr/bin/open
-```
-
-### Issue: LLM not responding
-
-**Solution:** Verify your Gemini API key in `.env`:
-
-```bash
-cat .env  # Should show GEMINI_API_KEY=...
-```
-
----
-
-## 📝 License
-
-This is an educational project for learning MCP and agentic AI workflows.
-
----
-
-## 🙏 Acknowledgments
-
-- **Model Context Protocol (MCP)** by Anthropic
-- **Google Gemini** for LLM capabilities
-- **FastMCP** for easy MCP server creation
-
----
-
-## 📧 Contact
-
-For questions or issues, please refer to the course materials or instructor.
+**🚀 Ready to run? Execute:** `python3 talk2mcp.py`

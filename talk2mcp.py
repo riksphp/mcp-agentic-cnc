@@ -14,10 +14,14 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-max_iterations = 10  # Increased for math + canvas visualization steps
+max_iterations = 15  # Increased for math + canvas visualization + email steps
 last_response = None
 iteration = 0
 iteration_response = []
+
+# Global sessions for both MCP servers
+math_session = None
+gmail_session = None
 
 async def generate_with_timeout(client, prompt, timeout=10):
     """Generate content with a timeout"""
@@ -54,25 +58,57 @@ def reset_state():
 async def main():
     reset_state()  # Reset at the start of main
     print("Starting main execution...")
+    
+    global math_session, gmail_session
+    
     try:
-        # Create a single MCP server connection
-        print("Establishing connection to MCP server...")
-        server_params = StdioServerParameters(
+        # Create MCP server connections for BOTH math and gmail servers
+        print("Establishing connection to Math MCP server...")
+        math_server_params = StdioServerParameters(
             command="python3",
             args=["example_macp_server_mac.py"]
         )
+        
+        print("Establishing connection to Gmail MCP server...")
+        gmail_server_params = StdioServerParameters(
+            command="python3",
+            args=[
+                "/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/gmail/server.py",
+                "--creds-file-path",
+                "/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json",
+                "--token-path",
+                "/Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/app_tokens.json"
+            ]
+        )
 
-        async with stdio_client(server_params) as (read, write):
-            print("Connection established, creating session...")
-            async with ClientSession(read, write) as session:
-                print("Session created, initializing...")
-                await session.initialize()
+        # Connect to both servers
+        async with stdio_client(math_server_params) as (math_read, math_write), \
+                   stdio_client(gmail_server_params) as (gmail_read, gmail_write):
+            print("Connections established, creating sessions...")
+            
+            async with ClientSession(math_read, math_write) as math_sess, \
+                       ClientSession(gmail_read, gmail_write) as gmail_sess:
+                print("Sessions created, initializing...")
                 
-                # Get available tools
-                print("Requesting tool list...")
-                tools_result = await session.list_tools()
-                tools = tools_result.tools
-                print(f"Successfully retrieved {len(tools)} tools")
+                # Store sessions globally so we can route tool calls
+                math_session = math_sess
+                gmail_session = gmail_sess
+                
+                await math_session.initialize()
+                await gmail_session.initialize()
+                
+                # Get available tools from BOTH servers
+                print("Requesting tool lists from both servers...")
+                math_tools_result = await math_session.list_tools()
+                gmail_tools_result = await gmail_session.list_tools()
+                
+                math_tools = math_tools_result.tools
+                gmail_tools = gmail_tools_result.tools
+                
+                # Merge tools from both servers
+                tools = list(math_tools) + list(gmail_tools)
+                print(f"Successfully retrieved {len(math_tools)} math tools and {len(gmail_tools)} gmail tools")
+                print(f"Total tools available: {len(tools)}")
 
                 # Create system prompt with available tools
                 print("Creating system prompt...")
@@ -117,7 +153,7 @@ async def main():
                 
                 print("Created system prompt...")
                 
-                system_prompt = f"""You are a math agent that solves problems. You have access to mathematical and canvas drawing tools.
+                system_prompt = f"""You are a math agent that solves problems. You have access to mathematical, canvas drawing, and email tools.
 
 Available tools:
 {tools_description}
@@ -136,39 +172,46 @@ WORKFLOW:
    - Draw rectangle using draw_rectangle with coordinates (e.g., x1=100, y1=100, x2=600, y2=200)
    - Add text with result using add_text_in_paint (text_x=110, text_y=110, text="your answer")
    - Refresh canvas using refresh_canvas to display
-3. Return FINAL_ANSWER with your result
+3. IF the user asks to "send email", "email the result", or "notify via email", then:
+   - Use send-email tool with recipient_id, subject, and message containing your final answer
+4. Return FINAL_ANSWER with your result
 
 Important Rules:
 - ONLY use canvas tools if user specifically requests visualization/drawing/canvas
-- If no visualization requested, return FINAL_ANSWER immediately after calculations
+- ONLY use email tools if user specifically requests sending email
+- If no visualization or email requested, return FINAL_ANSWER immediately after calculations
 - Canvas workflow when needed: open_canvas → draw_rectangle → add_text_in_paint → refresh_canvas
 - Text position should be inside rectangle bounds (add ~10px padding from rectangle x1, y1)
 - Include your calculated result in the text parameter
 - Do not repeat function calls with the same parameters
+- For send-email, use format: send-email|recipient@email.com|Subject Line|Message body with result
 
-Examples WITHOUT visualization:
+Examples WITHOUT visualization or email:
 - FUNCTION_CALL: strings_to_chars_to_int|INDIA
 - FUNCTION_CALL: int_list_to_exponential_sum|73,78,68,73,65
 - FINAL_ANSWER: [8.599e+33]
 
-Examples WITH visualization (if user asks):
-- FUNCTION_CALL: strings_to_chars_to_int|INDIA
-- FUNCTION_CALL: int_list_to_exponential_sum|73,78,68,73,65
-- FUNCTION_CALL: open_canvas
-- FUNCTION_CALL: draw_rectangle|100|100|600|200
-- FUNCTION_CALL: add_text_in_paint|110|110|Result: 7.599e+33
-- FUNCTION_CALL: refresh_canvas
-- FINAL_ANSWER: [8.599e+33]
+Examples WITH email (if user asks):
+- FUNCTION_CALL: strings_to_chars_to_int|RISHIKESH
+- FUNCTION_CALL: int_list_to_exponential_sum|82,73,83,72,73,75,69,83,72
+- FUNCTION_CALL: send-email|user@example.com|Calculation Result|The exponential sum result is: 1.234e+35
+- FINAL_ANSWER: [1.234e+35]
 
 DO NOT include any explanations or additional text.
 Your entire response should be a single line starting with either FUNCTION_CALL: or FINAL_ANSWER:"""
 
                 # Query Options:
                 # WITH visualization:
-                query = """Find the ASCII values of characters in   RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."""
+                # query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."""
                 
                 # WITHOUT visualization (uncomment to test):
                 # query = """Find the ASCII values of characters in RISHIKESH and calculate the sum of exponentials of those values."""
+                
+                # WITH EMAIL (send result via email):
+                # query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then send the result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation Result'."""
+                
+                # WITH BOTH visualization AND email:
+                query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, visualize it on canvas, and then send the query and result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation Result'."""
                 
                 print("Starting iteration loop...")
                 print(f"Query: {query}")
@@ -225,6 +268,18 @@ Your entire response should be a single line starting with either FUNCTION_CALL:
                             print(f"DEBUG: Found tool: {tool.name}")
                             print(f"DEBUG: Tool schema: {tool.inputSchema}")
 
+                            # Determine which session to use based on tool name
+                            # Gmail tools: send-email, get-unread-emails, read-email, trash-email, mark-email-as-read, open-email
+                            gmail_tool_names = ['send-email', 'get-unread-emails', 'read-email', 'trash-email', 
+                                               'mark-email-as-read', 'open-email']
+                            
+                            if func_name in gmail_tool_names:
+                                active_session = gmail_session
+                                print(f"DEBUG: Routing to Gmail session")
+                            else:
+                                active_session = math_session
+                                print(f"DEBUG: Routing to Math session")
+
                             # Prepare arguments according to the tool's input schema
                             arguments = {}
                             schema_properties = tool.inputSchema.get('properties', {})
@@ -253,9 +308,9 @@ Your entire response should be a single line starting with either FUNCTION_CALL:
                                     arguments[param_name] = str(value)
 
                             print(f"DEBUG: Final arguments: {arguments}")
-                            print(f"DEBUG: Calling tool {func_name}")
+                            print(f"DEBUG: Calling tool {func_name} on appropriate session")
                             
-                            result = await session.call_tool(func_name, arguments=arguments)
+                            result = await active_session.call_tool(func_name, arguments=arguments)
                             print(f"DEBUG: Raw result: {result}")
                             
                             # Get the full result content

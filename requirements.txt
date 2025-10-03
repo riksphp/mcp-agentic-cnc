@@ -1,0 +1,20 @@
+# MCP Agentic Integration Requirements
+# For talk2mcp.py with Gmail MCP Server integration
+
+# Core MCP
+mcp>=1.1.2
+
+# Google Gemini AI
+google-genai
+
+# Environment variables
+python-dotenv
+
+# Gmail MCP Server Dependencies
+google-api-python-client>=2.156.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.1
+
+# HTTP client
+httpx>=0.28.1
+

@@ -14,7 +14,7 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-max_iterations = 5
+max_iterations = 10  # Increased for math + canvas visualization steps
 last_response = None
 iteration = 0
 iteration_response = []
@@ -117,7 +117,7 @@ async def main():
                 
                 print("Created system prompt...")
                 
-                system_prompt = f"""You are a math agent solving problems in iterations. You have access to various mathematical tools.
+                system_prompt = f"""You are a math agent that solves problems. You have access to mathematical and canvas drawing tools.
 
 Available tools:
 {tools_description}
@@ -126,27 +126,52 @@ You must respond with EXACTLY ONE line in one of these formats (no additional te
 1. For function calls:
    FUNCTION_CALL: function_name|param1|param2|...
    
-2. For final answers (ONLY when you have the final numeric result):
-   FINAL_ANSWER: [number]
+2. For final completion:
+   FINAL_ANSWER: [your_result]
 
-Important:
-- When a function returns multiple values, you need to process all of them
-- If you receive a final numeric result from a function, respond with FINAL_ANSWER immediately
-- Only give FINAL_ANSWER when you have completed all necessary calculations and have the final number
+WORKFLOW:
+1. Solve the mathematical problem using math tools
+2. IF the user asks to "visualize", "draw", "show on canvas", or "paint", then:
+   - Open canvas using open_canvas
+   - Draw rectangle using draw_rectangle with coordinates (e.g., x1=100, y1=100, x2=600, y2=200)
+   - Add text with result using add_text_in_paint (text_x=110, text_y=110, text="your answer")
+   - Refresh canvas using refresh_canvas to display
+3. Return FINAL_ANSWER with your result
+
+Important Rules:
+- ONLY use canvas tools if user specifically requests visualization/drawing/canvas
+- If no visualization requested, return FINAL_ANSWER immediately after calculations
+- Canvas workflow when needed: open_canvas → draw_rectangle → add_text_in_paint → refresh_canvas
+- Text position should be inside rectangle bounds (add ~10px padding from rectangle x1, y1)
+- Include your calculated result in the text parameter
 - Do not repeat function calls with the same parameters
-- The workflow typically is: get data → process data → get final number → FINAL_ANSWER
 
-Examples:
-- FUNCTION_CALL: add|5|3
+Examples WITHOUT visualization:
 - FUNCTION_CALL: strings_to_chars_to_int|INDIA
 - FUNCTION_CALL: int_list_to_exponential_sum|73,78,68,73,65
-- FINAL_ANSWER: [1.2345e+30]
+- FINAL_ANSWER: [8.599e+33]
+
+Examples WITH visualization (if user asks):
+- FUNCTION_CALL: strings_to_chars_to_int|INDIA
+- FUNCTION_CALL: int_list_to_exponential_sum|73,78,68,73,65
+- FUNCTION_CALL: open_canvas
+- FUNCTION_CALL: draw_rectangle|100|100|600|200
+- FUNCTION_CALL: add_text_in_paint|110|110|Result: 7.599e+33
+- FUNCTION_CALL: refresh_canvas
+- FINAL_ANSWER: [8.599e+33]
 
 DO NOT include any explanations or additional text.
 Your entire response should be a single line starting with either FUNCTION_CALL: or FINAL_ANSWER:"""
 
-                query = """Find the ASCII values of characters in INDIA and then return sum of exponentials of those values. """
+                # Query Options:
+                # WITH visualization:
+                query = """Find the ASCII values of characters in   RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."""
+                
+                # WITHOUT visualization (uncomment to test):
+                # query = """Find the ASCII values of characters in RISHIKESH and calculate the sum of exponentials of those values."""
+                
                 print("Starting iteration loop...")
+                print(f"Query: {query}")
                 
                 # Use global iteration variables
                 global iteration, last_response
@@ -272,44 +297,8 @@ Your entire response should be a single line starting with either FUNCTION_CALL:
 
                     elif response_text.startswith("FINAL_ANSWER:"):
                         print("\n=== Agent Execution Complete ===")
-                        
-                        # Step 1: Open canvas
-                        print("Step 1: Opening canvas...")
-                        result = await session.call_tool("open_canvas")
-                        print(result.content[0].text)
-                        await asyncio.sleep(1)  # Wait for Preview to open
-
-                        # Step 2: Draw rectangle (saves to file, no Preview refresh)
-                        print("Step 2: Drawing rectangle...")
-                        result = await session.call_tool(
-                            "draw_rectangle",
-                            arguments={
-                                "x1": 100,
-                                "y1": 100,
-                                "x2": 600,
-                                "y2": 200
-                            }
-                        )
-                        print(result.content[0].text)
-
-                        # Step 3: Add text inside the rectangle (saves to file, no Preview refresh)
-                        print("Step 3: Adding text inside rectangle...")
-                        result = await session.call_tool(
-                            "add_text_in_paint",
-                            arguments={
-                                "text_x": 110,  # x1 + 10 for padding
-                                "text_y": 110,  # y1 + 10 for padding
-                                "text": response_text
-                            }
-                        )
-                        print(result.content[0].text)
-                        
-                        # Step 4: Refresh Preview to show all changes at once
-                        print("Step 4: Refreshing canvas in Preview...")
-                        result = await session.call_tool("refresh_canvas")
-                        print(result.content[0].text)
-                        
-                        print("\n=== Canvas creation complete! ===")
+                        print(f"Agent returned: {response_text}")
+                        print("\n✓ All tasks completed including visualization!")
                         break
                     
                     else:

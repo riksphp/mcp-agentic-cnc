@@ -200,183 +200,210 @@ Examples WITH email (if user asks):
 DO NOT include any explanations or additional text.
 Your entire response should be a single line starting with either FUNCTION_CALL: or FINAL_ANSWER:"""
 
-                # Query Options:
-                # WITH visualization:
-                # query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then visualize the final answer on a canvas with a rectangle and text."""
+                # Interactive Query Loop
+                print("\n" + "="*70)
+                print("🤖 AGENTIC AI ASSISTANT - Interactive Mode")
+                print("="*70)
+                print("\nCapabilities:")
+                print("  • Mathematical calculations (ASCII, exponentials, etc.)")
+                print("  • Canvas visualization")
+                print("  • Email results via Gmail")
+                print("\nExamples:")
+                print('  "Calculate ASCII sum for HELLO"')
+                print('  "Calculate ASCII sum for WORLD and visualize it"')
+                print('  "Calculate ASCII sum for AI and email to me@example.com"')
+                print("\nType 'quit', 'exit', or 'q' to stop.\n")
+                print("="*70 + "\n")
                 
-                # WITHOUT visualization (uncomment to test):
-                # query = """Find the ASCII values of characters in RISHIKESH and calculate the sum of exponentials of those values."""
-                
-                # WITH EMAIL (send result via email):
-                # query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, and then send the result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation Result'."""
-                
-                # WITH BOTH visualization AND email:
-                query = """Find the ASCII values of characters in RISHIKESH, calculate the sum of exponentials of those values, visualize it on canvas, and then send the query and result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation Result'."""
-                
-                print("Starting iteration loop...")
-                print(f"Query: {query}")
-                
-                # Use global iteration variables
-                global iteration, last_response
-                
-                while iteration < max_iterations:
-                    print(f"\n--- Iteration {iteration + 1} ---")
-                    if last_response is None:
-                        current_query = query
-                    else:
-                        current_query = current_query + "\n\n" + " ".join(iteration_response)
-                        current_query = current_query + "  What should I do next?"
-
-                    # Get model's response with timeout
-                    print("Preparing to generate LLM response...")
-                    prompt = f"{system_prompt}\n\nQuery: {current_query}"
+                while True:
+                    # Get query from user
                     try:
-                        response = await generate_with_timeout(client, prompt)
-                        response_text = response.text.strip()
-                        print(f"LLM Response: {response_text}")
-                        
-                        # Find the FUNCTION_CALL or FINAL_ANSWER line in the response
-                        for line in response_text.split('\n'):
-                            line = line.strip()
-                            if line.startswith("FUNCTION_CALL:") or line.startswith("FINAL_ANSWER:"):
-                                response_text = line
-                                print(f"Extracted command: {response_text}")
-                                break
-                        
-                    except Exception as e:
-                        print(f"Failed to get LLM response: {e}")
-                        break
-
-
-                    if response_text.startswith("FUNCTION_CALL:"):
-                        _, function_info = response_text.split(":", 1)
-                        parts = [p.strip() for p in function_info.split("|")]
-                        func_name, params = parts[0], parts[1:]
-                        
-                        print(f"\nDEBUG: Raw function info: {function_info}")
-                        print(f"DEBUG: Split parts: {parts}")
-                        print(f"DEBUG: Function name: {func_name}")
-                        print(f"DEBUG: Raw parameters: {params}")
-                        
-                        try:
-                            # Find the matching tool to get its input schema
-                            tool = next((t for t in tools if t.name == func_name), None)
-                            if not tool:
-                                print(f"DEBUG: Available tools: {[t.name for t in tools]}")
-                                raise ValueError(f"Unknown tool: {func_name}")
-
-                            print(f"DEBUG: Found tool: {tool.name}")
-                            print(f"DEBUG: Tool schema: {tool.inputSchema}")
-
-                            # Determine which session to use based on tool name
-                            # Gmail tools: send-email, get-unread-emails, read-email, trash-email, mark-email-as-read, open-email
-                            gmail_tool_names = ['send-email', 'get-unread-emails', 'read-email', 'trash-email', 
-                                               'mark-email-as-read', 'open-email']
-                            
-                            if func_name in gmail_tool_names:
-                                active_session = gmail_session
-                                print(f"DEBUG: Routing to Gmail session")
-                            else:
-                                active_session = math_session
-                                print(f"DEBUG: Routing to Math session")
-
-                            # Prepare arguments according to the tool's input schema
-                            arguments = {}
-                            schema_properties = tool.inputSchema.get('properties', {})
-                            print(f"DEBUG: Schema properties: {schema_properties}")
-
-                            for param_name, param_info in schema_properties.items():
-                                if not params:  # Check if we have enough parameters
-                                    raise ValueError(f"Not enough parameters provided for {func_name}")
-                                    
-                                value = params.pop(0)  # Get and remove the first parameter
-                                param_type = param_info.get('type', 'string')
-                                
-                                print(f"DEBUG: Converting parameter {param_name} with value {value} to type {param_type}")
-                                
-                                # Convert the value to the correct type based on the schema
-                                if param_type == 'integer':
-                                    arguments[param_name] = int(value)
-                                elif param_type == 'number':
-                                    arguments[param_name] = float(value)
-                                elif param_type == 'array':
-                                    # Handle array input
-                                    if isinstance(value, str):
-                                        value = value.strip('[]').split(',')
-                                    arguments[param_name] = [int(x.strip()) for x in value]
-                                else:
-                                    arguments[param_name] = str(value)
-
-                            print(f"DEBUG: Final arguments: {arguments}")
-                            print(f"DEBUG: Calling tool {func_name} on appropriate session")
-                            
-                            result = await active_session.call_tool(func_name, arguments=arguments)
-                            print(f"DEBUG: Raw result: {result}")
-                            
-                            # Get the full result content
-                            if hasattr(result, 'content'):
-                                print(f"DEBUG: Result has content attribute")
-                                # Handle multiple content items
-                                if isinstance(result.content, list):
-                                    iteration_result = [
-                                        item.text if hasattr(item, 'text') else str(item)
-                                        for item in result.content
-                                    ]
-                                else:
-                                    iteration_result = str(result.content)
-                            else:
-                                print(f"DEBUG: Result has no content attribute")
-                                iteration_result = str(result)
-                                
-                            print(f"DEBUG: Final iteration result: {iteration_result}")
-                            
-                            # Format the response based on result type
-                            if isinstance(iteration_result, list):
-                                result_str = f"[{', '.join(iteration_result)}]"
-                            else:
-                                result_str = str(iteration_result)
-                            
-                            iteration_response.append(
-                                f"In the {iteration + 1} iteration you called {func_name} with {arguments} parameters, "
-                                f"and the function returned {result_str}."
-                            )
-                            last_response = iteration_result
-
-                        except Exception as e:
-                            print(f"DEBUG: Error details: {str(e)}")
-                            print(f"DEBUG: Error type: {type(e)}")
-                            import traceback
-                            traceback.print_exc()
-                            iteration_response.append(f"Error in iteration {iteration + 1}: {str(e)}")
-                            break
-
-                    elif response_text.startswith("FINAL_ANSWER:"):
-                        print("\n=== Agent Execution Complete ===")
-                        print(f"Agent returned: {response_text}")
-                        print("\n✓ All tasks completed including visualization!")
+                        query = input("\n💬 Your Query: ").strip()
+                    except (EOFError, KeyboardInterrupt):
+                        print("\n\n👋 Goodbye!")
                         break
                     
-                    else:
-                        # Neither FUNCTION_CALL nor FINAL_ANSWER was detected
-                        print(f"WARNING: Unexpected response format: {response_text}")
-                        print("Expected FUNCTION_CALL: or FINAL_ANSWER:")
-                        iteration_response.append(f"Iteration {iteration + 1} returned unexpected format")
-
-                    iteration += 1
+                    if not query:
+                        print("⚠️  Please enter a query.")
+                        continue
+                    
+                    if query.lower() in ['quit', 'exit', 'q']:
+                        print("\n👋 Goodbye!")
+                        break
+                    
+                    # Reset state for new query
+                    reset_state()
+                    
+                    print(f"\n🔄 Processing: {query}")
+                    print("-" * 70)
+                    
+                    # Use global iteration variables
+                    global iteration, last_response
                 
-                # If loop completes without FINAL_ANSWER
-                if iteration >= max_iterations:
-                    print("\n!!! Maximum iterations reached without FINAL_ANSWER !!!")
-                    print("Iteration history:")
-                    for item in iteration_response:
-                        print(f"  - {item}")
+                    while iteration < max_iterations:
+                        print(f"\n--- Iteration {iteration + 1} ---")
+                        if last_response is None:
+                            current_query = query
+                        else:
+                            current_query = current_query + "\n\n" + " ".join(iteration_response)
+                            current_query = current_query + "  What should I do next?"
+
+                        # Get model's response with timeout
+                        print("Preparing to generate LLM response...")
+                        prompt = f"{system_prompt}\n\nQuery: {current_query}"
+                        try:
+                            response = await generate_with_timeout(client, prompt)
+                            response_text = response.text.strip()
+                            print(f"LLM Response: {response_text}")
+                            
+                            # Find the FUNCTION_CALL or FINAL_ANSWER line in the response
+                            for line in response_text.split('\n'):
+                                line = line.strip()
+                                if line.startswith("FUNCTION_CALL:") or line.startswith("FINAL_ANSWER:"):
+                                    response_text = line
+                                    print(f"Extracted command: {response_text}")
+                                    break
+                            
+                        except Exception as e:
+                            print(f"Failed to get LLM response: {e}")
+                            break
+
+
+                        if response_text.startswith("FUNCTION_CALL:"):
+                            _, function_info = response_text.split(":", 1)
+                            parts = [p.strip() for p in function_info.split("|")]
+                            func_name, params = parts[0], parts[1:]
+                            
+                            print(f"\nDEBUG: Raw function info: {function_info}")
+                            print(f"DEBUG: Split parts: {parts}")
+                            print(f"DEBUG: Function name: {func_name}")
+                            print(f"DEBUG: Raw parameters: {params}")
+                            
+                            try:
+                                # Find the matching tool to get its input schema
+                                tool = next((t for t in tools if t.name == func_name), None)
+                                if not tool:
+                                    print(f"DEBUG: Available tools: {[t.name for t in tools]}")
+                                    raise ValueError(f"Unknown tool: {func_name}")
+
+                                print(f"DEBUG: Found tool: {tool.name}")
+                                print(f"DEBUG: Tool schema: {tool.inputSchema}")
+
+                                # Determine which session to use based on tool name
+                                # Gmail tools: send-email, get-unread-emails, read-email, trash-email, mark-email-as-read, open-email
+                                gmail_tool_names = ['send-email', 'get-unread-emails', 'read-email', 'trash-email', 
+                                                   'mark-email-as-read', 'open-email']
+                                
+                                if func_name in gmail_tool_names:
+                                    active_session = gmail_session
+                                    print(f"DEBUG: Routing to Gmail session")
+                                else:
+                                    active_session = math_session
+                                    print(f"DEBUG: Routing to Math session")
+
+                                # Prepare arguments according to the tool's input schema
+                                arguments = {}
+                                schema_properties = tool.inputSchema.get('properties', {})
+                                print(f"DEBUG: Schema properties: {schema_properties}")
+
+                                for param_name, param_info in schema_properties.items():
+                                    if not params:  # Check if we have enough parameters
+                                        raise ValueError(f"Not enough parameters provided for {func_name}")
+                                        
+                                    value = params.pop(0)  # Get and remove the first parameter
+                                    param_type = param_info.get('type', 'string')
+                                    
+                                    print(f"DEBUG: Converting parameter {param_name} with value {value} to type {param_type}")
+                                    
+                                    # Convert the value to the correct type based on the schema
+                                    if param_type == 'integer':
+                                        arguments[param_name] = int(value)
+                                    elif param_type == 'number':
+                                        arguments[param_name] = float(value)
+                                    elif param_type == 'array':
+                                        # Handle array input
+                                        if isinstance(value, str):
+                                            value = value.strip('[]').split(',')
+                                        arguments[param_name] = [int(x.strip()) for x in value]
+                                    else:
+                                        arguments[param_name] = str(value)
+
+                                print(f"DEBUG: Final arguments: {arguments}")
+                                print(f"DEBUG: Calling tool {func_name} on appropriate session")
+                                
+                                result = await active_session.call_tool(func_name, arguments=arguments)
+                                print(f"DEBUG: Raw result: {result}")
+                                
+                                # Get the full result content
+                                if hasattr(result, 'content'):
+                                    print(f"DEBUG: Result has content attribute")
+                                    # Handle multiple content items
+                                    if isinstance(result.content, list):
+                                        iteration_result = [
+                                            item.text if hasattr(item, 'text') else str(item)
+                                            for item in result.content
+                                        ]
+                                    else:
+                                        iteration_result = str(result.content)
+                                else:
+                                    print(f"DEBUG: Result has no content attribute")
+                                    iteration_result = str(result)
+                                    
+                                print(f"DEBUG: Final iteration result: {iteration_result}")
+                                
+                                # Format the response based on result type
+                                if isinstance(iteration_result, list):
+                                    result_str = f"[{', '.join(iteration_result)}]"
+                                else:
+                                    result_str = str(iteration_result)
+                                
+                                iteration_response.append(
+                                    f"In the {iteration + 1} iteration you called {func_name} with {arguments} parameters, "
+                                    f"and the function returned {result_str}."
+                                )
+                                last_response = iteration_result
+
+                            except Exception as e:
+                                print(f"DEBUG: Error details: {str(e)}")
+                                print(f"DEBUG: Error type: {type(e)}")
+                                import traceback
+                                traceback.print_exc()
+                                iteration_response.append(f"Error in iteration {iteration + 1}: {str(e)}")
+                                break
+
+                        elif response_text.startswith("FINAL_ANSWER:"):
+                            print("\n" + "="*70)
+                            print("✅ QUERY COMPLETE")
+                            print("="*70)
+                            print(f"Final Answer: {response_text}")
+                            print("="*70)
+                            break
+                        
+                        else:
+                            # Neither FUNCTION_CALL nor FINAL_ANSWER was detected
+                            print(f"WARNING: Unexpected response format: {response_text}")
+                            print("Expected FUNCTION_CALL: or FINAL_ANSWER:")
+                            iteration_response.append(f"Iteration {iteration + 1} returned unexpected format")
+
+                        iteration += 1
+                    
+                    # If loop completes without FINAL_ANSWER
+                    if iteration >= max_iterations:
+                        print("\n!!! Maximum iterations reached without FINAL_ANSWER !!!")
+                        print("Iteration history:")
+                        for item in iteration_response:
+                            print(f"  - {item}")
+                    
+                    # End of query processing - loop back to ask for next query
 
     except Exception as e:
-        print(f"Error in main execution: {e}")
+        print(f"\n❌ Error in main execution: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        reset_state()  # Reset at the end of main
+        print("\n" + "="*70)
+        print("👋 Thank you for using the Agentic AI Assistant!")
+        print("="*70)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -141,6 +141,16 @@ def fibonacci_numbers(n: int) -> list:
 # -----------------------------
 # Canvas tools (interactive)
 # -----------------------------
+
+def _force_preview_refresh(image_path: str):
+    """Helper function to force Preview to reload the image."""
+    # Close existing Preview window
+    subprocess.run(["pkill", "-f", "Preview"], stderr=subprocess.DEVNULL)
+    time.sleep(0.2)
+    # Reopen the image
+    subprocess.Popen(["open", image_path])
+    time.sleep(0.3)
+
 @mcp.tool()
 async def open_canvas() -> dict:
     global canvas_app_open, canvas_image_path, canvas_position
@@ -206,15 +216,19 @@ async def add_text_in_paint(text_x: int, text_y: int, text: str) -> dict:
 
 @mcp.tool()
 async def refresh_canvas() -> dict:
+    """
+    Force refresh the canvas in Preview by closing and reopening.
+    This ensures all drawn elements are visible immediately.
+    """
     global canvas_app_open, canvas_image_path
     try:
         if not canvas_app_open:
             return {"content": [TextContent(type="text", text="Canvas not open")]}
 
-        # Reopen the file - Preview will reload it automatically if already open
-        subprocess.Popen(["open", canvas_image_path])
+        # Use helper to force Preview refresh
+        _force_preview_refresh(canvas_image_path)
         
-        return {"content": [TextContent(type="text", text="Canvas refreshed in Preview")]}
+        return {"content": [TextContent(type="text", text="Canvas refreshed and displayed in Preview")]}
     except Exception as e:
         return {"content": [TextContent(type="text", text=f"Error refreshing canvas: {e}")]}
 

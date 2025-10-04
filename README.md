@@ -11,7 +11,7 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
+- [Quick Start](#quick-start) 🆕 **Interactive Mode!**
 - [Gmail OAuth Setup](#gmail-oauth-setup)
 - [Configuration](#configuration)
 - [Usage Examples](#usage-examples)
@@ -34,11 +34,13 @@ This project integrates the [Gmail MCP Server](https://github.com/jasonsum/gmail
 
 ## Features
 
+- ✅ **Interactive Mode** - Enter queries from terminal, no code editing needed!
 - ✅ Perform complex mathematical calculations (ASCII conversion, exponential sums)
 - ✅ Visualize results on canvas with rectangles and text
 - ✅ **Automatically send results via Gmail**
 - ✅ Read and manage Gmail messages
 - ✅ Intelligent tool routing between servers
+- ✅ Multiple queries in one session
 - ✅ Configurable workflows (math-only, visualization, email, or all)
 
 ---
@@ -84,21 +86,24 @@ pip install -r requirements.txt
 /Users/rishikesh.kumar/Desktop/EAGV2/gmail-mcp-server/src/.google/client_creds.json
 ```
 
-### 3️⃣ Configure Recipient Email
-
-Edit `talk2mcp.py` line 214:
-
-```python
-query = """... send result via email to YOUR_EMAIL@example.com ..."""
-```
-
-### 4️⃣ Run
+### 3️⃣ Run in Interactive Mode
 
 ```bash
 python3 talk2mcp.py
 ```
 
 **First run:** Browser opens for Gmail authentication → authorize → tokens saved automatically.
+
+### 4️⃣ Enter Your Queries
+
+```
+💬 Your Query: Calculate ASCII sum for HELLO
+💬 Your Query: Calculate ASCII sum for WORLD and visualize it
+💬 Your Query: Calculate ASCII sum for AI and email to user@example.com
+💬 Your Query: quit
+```
+
+> 💡 **New!** No more editing code! Just type your queries interactively. See `INTERACTIVE_MODE.md` for details.
 
 ---
 
@@ -178,6 +183,8 @@ and result via email to rishi.shrma06@gmail.com with subject 'EGA v2 Calculation
 ---
 
 ## Usage Examples
+
+> 💡 **Want more test prompts?** Check out `TEST_PROMPTS.md` for 20+ ready-to-use examples!
 
 ### Mode 1: Basic Calculation (No Visualization, No Email)
 
